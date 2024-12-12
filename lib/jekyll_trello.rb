@@ -1,6 +1,7 @@
 class JekyllTrello
-  def self.creater(idList)
+  def self.creator(idList)
     bundle_install
+    github
     Dir.mkdir("_plugins") unless Dir.exist?("_plugins")
     content = <<~RUBY
       require 'dotenv/load'
@@ -23,7 +24,8 @@ class JekyllTrello
 
           def generate(site)
             setup
-            
+            existing_posts = Dir.glob("./_posts/*").map { |f| File.basename(f) }
+
             cards = Trello::List.find("#{idList}").cards
             cards.each do |card|
               labels = card.labels.map { |label| label.color }
@@ -33,16 +35,24 @@ class JekyllTrello
               created_on = DateTime.strptime(card.id[0..7].to_i(16).to_s, '%s').to_date.to_s
               article_date = due_on.empty? ? created_on : due_on
               content = """---
-              layout: post
-              title: \#{card.name}
-              date: \#{article_date}
-              permalink: \#{slug}
-              ---
+      layout: post
+      title: \#{card.name}
+      date: \#{article_date}
+      permalink: \#{slug}
+      ---
 
               \#{card.desc}
               """
-              file_path = "./_posts/\#{article_date}-\#{slug}.md"
-              File.open(file_path, "w+") { |f| f.write(content) }
+              file_path = "./_posts/\#{article_date}-\#{slug}.md" 
+              if !File.exist?(file_path) || File.read(file_path) != content
+                File.open(file_path, "w+") { |f| f.write(content) }
+              end  
+              existing_posts.delete("\#{article_date}-\#{slug}.md")
+            end
+
+            existing_posts.each do |stale_post|
+              file_path = "./_posts/\#{stale_post}"
+              File.delete(file_path) if File.exist?(file_path)
             end
           end
         end
@@ -203,10 +213,10 @@ fi
 
 end
 
-idList = "6759348bb364c0a0ad05e54c"
-JekyllTrello.creater(idList)
+# idList = "6759348bb364c0a0ad05e54c"
+# JekyllTrello.creator(idList)
 # JekyllTrello.github
 # JekyllTrello.ruby_version
 # JekyllTrello.scripts
 # JekyllTrello.bundle_install
-JekyllTrello.env_gitignore
+# JekyllTrello.env_gitignore
